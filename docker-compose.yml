@@ -1,0 +1,42 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports: ["27017:27017"]
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports: ["6379:6379"]
+
+  backend:
+    build: ./apps/backend
+    working_dir: /usr/src/app
+    env_file: [.env]
+    environment:
+      - NODE_ENV=development
+    ports: ["4000:4000"]
+    depends_on: [mongo, redis]
+    volumes:
+      - ./apps/backend:/usr/src/app
+      - backend_pnpm_store:/root/.local/share/pnpm/store/v3
+    # Ключевая строка: ставим deps в смонтированную папку и только потом стартуем
+    command: sh -c "pnpm i && pnpm dev"
+
+  frontend:
+    build: ./apps/frontend
+    working_dir: /usr/src/app
+    env_file: [.env]
+    ports: ["5173:5173"]
+    depends_on: [backend]
+    volumes:
+      - ./apps/frontend:/usr/src/app
+      - frontend_pnpm_store:/root/.local/share/pnpm/store/v3
+    command: sh -c "pnpm i && pnpm dev --host"
+
+volumes:
+  mongo_data:
+  backend_pnpm_store:
+  frontend_pnpm_store:
